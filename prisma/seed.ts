@@ -6,12 +6,12 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database…')
 
-  // Create demo company
+  // Create demo company (matches the bootstrap-company created by migration)
   const company = await prisma.company.upsert({
-    where: { id: 'demo-company' },
+    where: { id: 'bootstrap-company' },
     update: {},
     create: {
-      id: 'demo-company',
+      id: 'bootstrap-company',
       name: 'Demo Plumbing Co.',
     },
   })
