@@ -26,7 +26,7 @@ const FLOW: JobStatus[] = [
 
 const NEXT_LABEL: Partial<Record<JobStatus, string>> = {
   JOB_REQUESTED:      'Schedule Job',
-  SCHEDULED:          'Assign Technician',
+  // SCHEDULED → TECHNICIAN_ASSIGNED is handled by AssignTechnicianModal (needs picker)
   TECHNICIAN_ASSIGNED:'Mark En Route',
   EN_ROUTE:           'Start Job',
   IN_PROGRESS:        'Mark Complete',
@@ -36,7 +36,7 @@ const NEXT_LABEL: Partial<Record<JobStatus, string>> = {
 
 const NEXT_STATUS: Partial<Record<JobStatus, JobStatus>> = {
   JOB_REQUESTED:      'SCHEDULED',
-  SCHEDULED:          'TECHNICIAN_ASSIGNED',
+  // SCHEDULED step omitted — handled by AssignTechnicianModal
   TECHNICIAN_ASSIGNED:'EN_ROUTE',
   EN_ROUTE:           'IN_PROGRESS',
   IN_PROGRESS:        'COMPLETED',

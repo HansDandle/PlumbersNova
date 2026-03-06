@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { JobStatusFlow } from '@/components/jobs/JobStatusFlow'
+import { AssignTechnicianModal } from '@/components/jobs/AssignTechnicianModal'
 import { AddPartsModal } from '@/components/jobs/AddPartsModal'
 import { AddNoteModal } from '@/components/jobs/AddNoteModal'
 import { AddLaborModal } from '@/components/jobs/AddLaborModal'
@@ -35,6 +36,15 @@ export default async function JobDetailPage({ params }: Params) {
   })
 
   if (!job) notFound()
+
+  // Fetch technicians for assignment modal (owner/dispatcher only)
+  const technicians = (session?.role === 'OWNER' || session?.role === 'DISPATCHER')
+    ? await prisma.user.findMany({
+        where: { companyId: session.companyId, role: 'TECHNICIAN' },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
+      })
+    : []
 
   const partsTotal = job.parts.reduce((s, p) => s + p.quantity * p.unitPrice, 0)
   const laborTotal = job.laborEntries.reduce((s, l) => s + l.amount, 0)
@@ -94,9 +104,16 @@ export default async function JobDetailPage({ params }: Params) {
         </dl>
       </div>
 
-      {/* Status flow — primary technician action */}
+      {/* Status flow / assign technician */}
       {canEdit && (
-        <JobStatusFlow jobId={job.id} currentStatus={job.status} />
+        job.status === 'SCHEDULED' || (job.status === 'JOB_REQUESTED' && technicians.length > 0 && !job.technicianId)
+          ? <AssignTechnicianModal
+              jobId={job.id}
+              technicians={technicians}
+              currentTechnicianId={job.technicianId}
+              currentScheduledTime={job.scheduledTime}
+            />
+          : <JobStatusFlow jobId={job.id} currentStatus={job.status} />
       )}
 
       {/* Parts */}
