@@ -38,8 +38,15 @@ export async function POST(req: NextRequest, { params }: Params) {
             companyId: session.companyId,
             name: lead.name,
             phone: lead.phone,
+            email: lead.email ?? undefined,
             address: body.address ?? lead.address,
           },
+        })
+      } else if (lead.email && !customer.email) {
+        // Backfill email if the existing customer record is missing it
+        customer = await tx.customer.update({
+          where: { id: customer.id },
+          data: { email: lead.email },
         })
       }
 
