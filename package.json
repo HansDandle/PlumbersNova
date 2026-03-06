@@ -12,18 +12,19 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "ts-node --project prisma/tsconfig.seed.json prisma/seed.ts",
+    "db:seed-pricebook": "npx tsx prisma/seedPricebook.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@react-pdf/renderer": "^3.4.4",
     "@prisma/client": "^5.10.0",
+    "@react-pdf/renderer": "^3.4.4",
     "bcryptjs": "^2.4.3",
     "groq-sdk": "^0.7.0",
     "jose": "^5.2.3",
     "next": "14.1.0",
-    "resend": "^3.2.0",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "resend": "^3.2.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -38,6 +39,7 @@
     "supabase": "^2.76.17",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   },
   "prisma": {

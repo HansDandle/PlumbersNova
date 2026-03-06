@@ -1,0 +1,348 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+
+type Task = {
+  id: string
+  category: string
+  name: string
+  description: string | null
+  unitPrice: number
+  isActive: boolean
+}
+
+type Props = {
+  initialTasks: Task[]
+  categories: string[]
+  canEdit: boolean
+}
+
+function fmt(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+}
+
+export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
+  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [search, setSearch] = useState('')
+  const [selectedCat, setSelectedCat] = useState('All')
+  const [showInactive, setShowInactive] = useState(false)
+
+  // Edit state
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [editCat, setEditCat] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  // New task state
+  const [showAdd, setShowAdd] = useState(false)
+  const [newCat, setNewCat] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newPrice, setNewPrice] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  const allCats = ['All', ...categories]
+
+  const filtered = useMemo(() => {
+    return tasks.filter((t) => {
+      if (!showInactive && !t.isActive) return false
+      if (selectedCat !== 'All' && t.category !== selectedCat) return false
+      if (search && !t.name.toLowerCase().includes(search.toLowerCase()) && !(t.description ?? '').toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    })
+  }, [tasks, search, selectedCat, showInactive])
+
+  // Group by category
+  const grouped = useMemo(() => {
+    const map = new Map<string, Task[]>()
+    for (const t of filtered) {
+      const arr = map.get(t.category) ?? []
+      arr.push(t)
+      map.set(t.category, arr)
+    }
+    return map
+  }, [filtered])
+
+  function startEdit(task: Task) {
+    setEditId(task.id)
+    setEditName(task.name)
+    setEditDesc(task.description ?? '')
+    setEditPrice(String(task.unitPrice))
+    setEditCat(task.category)
+  }
+
+  async function saveEdit() {
+    if (!editId) return
+    setSaving(true)
+    const res = await fetch(`/api/pricebook/${editId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editName, description: editDesc, unitPrice: Number(editPrice), category: editCat }),
+    })
+    const updated: Task = await res.json()
+    setTasks((prev) => prev.map((t) => (t.id === editId ? updated : t)))
+    setEditId(null)
+    setSaving(false)
+  }
+
+  async function toggleActive(task: Task) {
+    const res = await fetch(`/api/pricebook/${task.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !task.isActive }),
+    })
+    const updated: Task = await res.json()
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? updated : t)))
+  }
+
+  async function addTask() {
+    if (!newName || !newPrice || !newCat) return
+    setAdding(true)
+    const res = await fetch('/api/pricebook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: newCat, name: newName, description: newDesc, unitPrice: Number(newPrice) }),
+    })
+    const created: Task = await res.json()
+    setTasks((prev) => [...prev, created])
+    setNewCat('')
+    setNewName('')
+    setNewDesc('')
+    setNewPrice('')
+    setShowAdd(false)
+    setAdding(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <input
+          type="search"
+          placeholder="Search tasks…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <div className="flex gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="rounded"
+            />
+            Show inactive
+          </label>
+          {canEdit && (
+            <button
+              onClick={() => setShowAdd(!showAdd)}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
+            >
+              + Add Task
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Category filter */}
+      <div className="flex gap-1.5 flex-wrap">
+        {allCats.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCat(cat)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              selectedCat === cat
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Add task form */}
+      {showAdd && canEdit && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-blue-900">New Task</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Category *</label>
+              <input
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                list="category-list"
+                placeholder="e.g. Drain Cleaning"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <datalist id="category-list">
+                {categories.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Unit Price *</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Task Name *</label>
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Task name"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Description (optional)</label>
+              <input
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Notes or caveats"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={addTask}
+              disabled={!newName || !newPrice || !newCat || adding}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {adding ? 'Saving…' : 'Save Task'}
+            </button>
+            <button
+              onClick={() => setShowAdd(false)}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Summary */}
+      <p className="text-xs text-gray-400">
+        {filtered.length} task{filtered.length !== 1 ? 's' : ''} shown
+        {!showInactive ? ' (active only)' : ''}
+      </p>
+
+      {/* Task table grouped by category */}
+      {grouped.size === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">No tasks match your filter</div>
+      ) : (
+        Array.from(grouped.entries()).map(([cat, catTasks]) => (
+          <div key={cat} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700">{cat}</h3>
+              <span className="text-xs text-gray-400">{catTasks.length} tasks</span>
+            </div>
+            <table className="w-full text-sm">
+              <tbody className="divide-y divide-gray-50">
+                {catTasks.map((task) => {
+                  const isEditing = editId === task.id
+
+                  if (isEditing) {
+                    return (
+                      <tr key={task.id} className="bg-blue-50/40">
+                        <td className="px-4 py-3 w-full" colSpan={3}>
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                value={editCat}
+                                onChange={(e) => setEditCat(e.target.value)}
+                                list="category-list"
+                                placeholder="Category"
+                                className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              />
+                              <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                                <input
+                                  type="number"
+                                  value={editPrice}
+                                  onChange={(e) => setEditPrice(e.target.value)}
+                                  className="w-full pl-6 pr-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                />
+                              </div>
+                            </div>
+                            <input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <input
+                              value={editDesc}
+                              onChange={(e) => setEditDesc(e.target.value)}
+                              placeholder="Description (optional)"
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                            <div className="flex gap-2">
+                              <button onClick={saveEdit} disabled={saving} className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                                {saving ? 'Saving…' : 'Save'}
+                              </button>
+                              <button onClick={() => setEditId(null)} className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded text-xs hover:bg-gray-50">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  return (
+                    <tr key={task.id} className={`hover:bg-gray-50/60 transition-colors ${!task.isActive ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3 flex-1">
+                        <div className="font-medium text-gray-900 leading-snug">{task.name}</div>
+                        {task.description && (
+                          <div className="text-xs text-gray-400 mt-0.5">{task.description}</div>
+                        )}
+                        {!task.isActive && <span className="text-xs text-red-400">Inactive</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">
+                        {fmt(task.unitPrice)}
+                      </td>
+                      {canEdit && (
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => startEdit(task)}
+                            className="text-xs text-gray-400 hover:text-blue-600 transition-colors mr-3"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => toggleActive(task)}
+                            className={`text-xs transition-colors ${
+                              task.isActive
+                                ? 'text-gray-400 hover:text-red-500'
+                                : 'text-gray-400 hover:text-green-600'
+                            }`}
+                          >
+                            {task.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}

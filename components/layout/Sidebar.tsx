@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: '/invoices', label: 'Invoices', icon: '💲', roles: ['OWNER', 'DISPATCHER'] },
   { href: '/messages', label: 'Messages', icon: '💬', roles: ['OWNER', 'DISPATCHER'] },
   { href: '/reports', label: 'Reports', icon: '📊' },
+  { href: '/pricebook', label: 'Price Book', icon: '📖', roles: ['OWNER', 'DISPATCHER'] },
   { href: '/settings', label: 'Settings', icon: '⚙️', roles: ['OWNER', 'DISPATCHER'] },
 ]
 

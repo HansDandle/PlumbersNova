@@ -61,6 +61,7 @@ enum LineItemType {
   SERVICE_CALL
   LABOR
   PART
+  TASK
 }
 
 enum MessageDir {
@@ -99,6 +100,7 @@ model Company {
   inventoryLocations InventoryLocation[]
   invoices           Invoice[]
   messages           Message[]
+  priceBookTasks     PriceBookTask[]
 
   @@map("companies")
 }
@@ -217,6 +219,7 @@ model Job {
   photos       JobPhoto[]
   parts        JobPart[]
   laborEntries LaborEntry[]
+  jobTasks     JobTask[]
   invoice      Invoice?
 
   @@map("jobs")
@@ -407,4 +410,45 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// Price Book
+// ─────────────────────────────────────────────
+
+model PriceBookTask {
+  id          String  @id @default(cuid())
+  company     Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId   String
+
+  category    String
+  name        String
+  description String?
+  unitPrice   Float
+  isActive    Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobTasks JobTask[]
+
+  @@map("price_book_tasks")
+}
+
+model JobTask {
+  id              String         @id @default(cuid())
+  job             Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId           String
+  priceBookTask   PriceBookTask? @relation(fields: [priceBookTaskId], references: [id])
+  priceBookTaskId String?
+
+  name        String
+  description String?
+  quantity    Float    @default(1)
+  unitPrice   Float
+  total       Float
+
+  createdAt DateTime @default(now())
+
+  @@map("job_tasks")
 }

@@ -8,6 +8,7 @@ import { AddPartsModal } from '@/components/jobs/AddPartsModal'
 import { AddNoteModal } from '@/components/jobs/AddNoteModal'
 import { AddLaborModal } from '@/components/jobs/AddLaborModal'
 import { GenerateInvoiceButton } from '@/components/jobs/GenerateInvoiceButton'
+import { JobTasksSection } from '@/components/jobs/JobTasksSection'
 import { getSession } from '@/lib/auth'
 
 type Params = { params: { id: string } }
@@ -141,6 +142,14 @@ export default async function JobDetailPage({ params }: Params) {
           }
         </div>
       )}
+
+      {/* Tasks / Flat Rate Items */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <JobTasksSection
+          jobId={job.id}
+          readOnly={['INVOICED', 'PAID'].includes(job.status)}
+        />
+      </div>
 
       {/* Parts */}
       <Section title="Parts Used" action={canEdit && job.status !== 'PAID' ? <AddPartsModal jobId={job.id} /> : undefined}>

@@ -49,7 +49,12 @@ export async function POST(req: NextRequest) {
 
     const job = await prisma.job.findFirst({
       where: { id: body.jobId, companyId: session.companyId },
-      include: { parts: { include: { item: true } }, laborEntries: true, invoice: true },
+      include: {
+        parts: { include: { item: true } },
+        laborEntries: true,
+        jobTasks: { orderBy: { createdAt: 'asc' } },
+        invoice: true,
+      },
     })
 
     if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
@@ -61,6 +66,14 @@ export async function POST(req: NextRequest) {
       ...(serviceCallAmount > 0
         ? [{ type: 'SERVICE_CALL' as const, description: 'Service Call', quantity: 1, unitPrice: serviceCallAmount, total: serviceCallAmount }]
         : []),
+      // Flat-rate tasks go first
+      ...job.jobTasks.map((t) => ({
+        type: 'TASK' as const,
+        description: t.name,
+        quantity: t.quantity,
+        unitPrice: t.unitPrice,
+        total: t.total,
+      })),
       ...job.laborEntries.map((l) => ({
         type: 'LABOR' as const,
         description: l.description,
