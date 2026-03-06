@@ -34,17 +34,23 @@ export async function POST(req: NextRequest) {
       return xml(TWIML_EMPTY, 400)
     }
 
+    const companyId = req.nextUrl.searchParams.get('companyId')
+    if (!companyId) {
+      return xml(TWIML_EMPTY, 400)
+    }
+
     const normalizedPhone = from.replace(/\D/g, '')
     const last10 = normalizedPhone.slice(-10)
 
     // ── Resolve existing customer ─────────────────────────────────────────
     const customer = await prisma.customer.findFirst({
-      where: { phone: { endsWith: last10 } },
+      where: { companyId, phone: { endsWith: last10 } },
     })
 
     // ── Log the inbound message ───────────────────────────────────────────
     const message = await prisma.message.create({
       data: {
+        companyId,
         direction: 'INBOUND',
         channel: 'SMS',
         content: body,
@@ -55,6 +61,7 @@ export async function POST(req: NextRequest) {
     // ── Find any open lead for this number ────────────────────────────────
     const existingLead = await prisma.lead.findFirst({
       where: {
+        companyId,
         phone: { endsWith: last10 },
         status: { in: ['NEW', 'CONTACTED'] },
       },
@@ -94,7 +101,7 @@ export async function POST(req: NextRequest) {
 
       // When intake completes, fire dispatcher notification
       if (nextState.step === 'COMPLETE') {
-        await notifyDispatchers(existingLead.id)
+        await notifyDispatchers(existingLead.id, companyId)
       }
 
       return xml(twimlReply)
@@ -109,6 +116,7 @@ export async function POST(req: NextRequest) {
 
     const newLead = await prisma.lead.create({
       data: {
+        companyId,
         name: customer?.name ?? 'Unknown',
         phone: from,
         description: body,           // raw first message as initial description
@@ -141,9 +149,9 @@ function xml(body: string, status = 200) {
 }
 
 /** Create in-app notifications for all OWNER + DISPATCHER users. */
-async function notifyDispatchers(leadId: string) {
+async function notifyDispatchers(leadId: string, companyId: string) {
   const dispatchers = await prisma.user.findMany({
-    where: { role: { in: ['OWNER', 'DISPATCHER'] } },
+    where: { companyId, role: { in: ['OWNER', 'DISPATCHER'] } },
     select: { id: true },
   })
   await prisma.notification.createMany({

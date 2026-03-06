@@ -82,11 +82,36 @@ enum NotificationType {
 }
 
 // ─────────────────────────────────────────────
+// Company (tenant)
+// ─────────────────────────────────────────────
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users              User[]
+  customers          Customer[]
+  leads              Lead[]
+  jobs               Job[]
+  inventoryItems     InventoryItem[]
+  inventoryLocations InventoryLocation[]
+  invoices           Invoice[]
+  messages           Message[]
+
+  @@map("companies")
+}
+
+// ─────────────────────────────────────────────
 // Users
 // ─────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
   name      String
   email     String   @unique
   phone     String?
@@ -109,7 +134,10 @@ model User {
 // ─────────────────────────────────────────────
 
 model Customer {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
   name      String
   phone     String
   address   String?
@@ -130,12 +158,15 @@ model Customer {
 // ─────────────────────────────────────────────
 
 model Lead {
-  id            String     @id @default(cuid())
-  customer      Customer?  @relation(fields: [customerId], references: [id])
-  customerId    String?
+  id         String  @id @default(cuid())
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  customerId String?
 
   name          String
   phone         String
+  email         String?
   address       String?
   description   String
   preferredTime String?
@@ -161,11 +192,13 @@ model Lead {
 // ─────────────────────────────────────────────
 
 model Job {
-  id                 String    @id @default(cuid())
-  lead               Lead?     @relation(fields: [leadId], references: [id])
-  leadId             String?   @unique
-  customer           Customer  @relation(fields: [customerId], references: [id])
-  customerId         String
+  id         String  @id @default(cuid())
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  lead       Lead?   @relation(fields: [leadId], references: [id])
+  leadId     String?   @unique
+  customer   Customer  @relation(fields: [customerId], references: [id])
+  customerId String
 
   address            String
   problemDescription String
@@ -217,8 +250,11 @@ model JobPhoto {
 // ─────────────────────────────────────────────
 
 model InventoryItem {
-  id           String   @id @default(cuid())
-  sku          String   @unique
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
+  sku          String
   name         String
   category     String?
   cost         Float
@@ -230,11 +266,15 @@ model InventoryItem {
   balances InventoryBalance[]
   jobParts JobPart[]
 
+  @@unique([companyId, sku])
   @@map("inventory_items")
 }
 
 model InventoryLocation {
-  id           String       @id @default(cuid())
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+
   name         String
   type         LocationType @default(WAREHOUSE)
   technician   User?        @relation(fields: [technicianId], references: [id])
@@ -299,9 +339,11 @@ model LaborEntry {
 // ─────────────────────────────────────────────
 
 model Invoice {
-  id                String        @id @default(cuid())
-  job               Job           @relation(fields: [jobId], references: [id])
-  jobId             String        @unique
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  job       Job     @relation(fields: [jobId], references: [id])
+  jobId     String  @unique
   serviceCallAmount Float         @default(0)
   status            InvoiceStatus @default(UNSENT)
   total             Float         @default(0)
@@ -333,11 +375,13 @@ model InvoiceLineItem {
 // ─────────────────────────────────────────────
 
 model Message {
-  id         String         @id @default(cuid())
-  customer   Customer?      @relation(fields: [customerId], references: [id])
+  id        String  @id @default(cuid())
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  customer  Customer? @relation(fields: [customerId], references: [id])
   customerId String?
-  lead       Lead?          @relation(fields: [leadId], references: [id])
-  leadId     String?
+  lead      Lead?   @relation(fields: [leadId], references: [id])
+  leadId    String?
   direction  MessageDir
   channel    MessageChannel @default(SMS)
   content    String

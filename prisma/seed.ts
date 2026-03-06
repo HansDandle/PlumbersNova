@@ -6,6 +6,16 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database…')
 
+  // Create demo company
+  const company = await prisma.company.upsert({
+    where: { id: 'demo-company' },
+    update: {},
+    create: {
+      id: 'demo-company',
+      name: 'Demo Plumbing Co.',
+    },
+  })
+
   // Create owner
   const ownerPassword = await bcrypt.hash('password123', 12)
   const owner = await prisma.user.upsert({
@@ -17,6 +27,7 @@ async function main() {
       phone: '555-0100',
       role: 'OWNER',
       password: ownerPassword,
+      companyId: company.id,
     },
   })
 
@@ -31,6 +42,7 @@ async function main() {
       phone: '555-0101',
       role: 'DISPATCHER',
       password: dispatcherPassword,
+      companyId: company.id,
     },
   })
 
@@ -45,6 +57,7 @@ async function main() {
       phone: '555-0102',
       role: 'TECHNICIAN',
       password: techPassword,
+      companyId: company.id,
     },
   })
 
@@ -57,6 +70,7 @@ async function main() {
       phone: '555-0103',
       role: 'TECHNICIAN',
       password: techPassword,
+      companyId: company.id,
     },
   })
 
@@ -73,9 +87,9 @@ async function main() {
 
   for (const item of items) {
     await prisma.inventoryItem.upsert({
-      where: { sku: item.sku },
+      where: { companyId_sku: { companyId: company.id, sku: item.sku } },
       update: {},
-      create: item,
+      create: { ...item, companyId: company.id },
     })
   }
 
@@ -87,6 +101,7 @@ async function main() {
       id: 'warehouse-main',
       name: 'Warehouse',
       type: 'WAREHOUSE',
+      companyId: company.id,
     },
   })
 
@@ -95,11 +110,12 @@ async function main() {
       name: 'Truck — Mike',
       type: 'TRUCK',
       technicianId: mike.id,
+      companyId: company.id,
     },
   }).catch(() => prisma.inventoryLocation.findFirst({ where: { technicianId: mike.id } }))
 
   // Set warehouse balances
-  const allItems = await prisma.inventoryItem.findMany()
+  const allItems = await prisma.inventoryItem.findMany({ where: { companyId: company.id } })
   for (const item of allItems) {
     await prisma.inventoryBalance.upsert({
       where: { locationId_itemId: { locationId: warehouse.id, itemId: item.id } },
@@ -118,6 +134,7 @@ async function main() {
       name: 'John Smith',
       phone: '555-1111',
       address: '123 Main St, Springfield',
+      companyId: company.id,
     },
   })
 
@@ -129,6 +146,7 @@ async function main() {
       technicianId: mike.id,
       status: 'TECHNICIAN_ASSIGNED',
       scheduledTime: new Date(),
+      companyId: company.id,
     },
   })
 

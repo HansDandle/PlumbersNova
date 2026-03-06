@@ -11,8 +11,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: params.id, companyId: session.companyId },
     include: {
       lineItems: true,
       job: {

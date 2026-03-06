@@ -38,6 +38,14 @@ export default async function LeadDetailPage({ params }: Params) {
             </dd>
           </div>
           <div>
+            <dt className="text-gray-500">Email</dt>
+            <dd className="font-medium mt-0.5">
+              {lead.email
+                ? <a href={`mailto:${lead.email}`} className="text-blue-600">{lead.email}</a>
+                : <span className="text-gray-400">—</span>}
+            </dd>
+          </div>
+          <div>
             <dt className="text-gray-500">Source</dt>
             <dd className="font-medium mt-0.5 capitalize">{lead.source.toLowerCase()}</dd>
           </div>

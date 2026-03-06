@@ -12,6 +12,7 @@ export interface SessionUser {
   email: string
   name: string
   role: Role
+  companyId: string
 }
 
 // ─── Token helpers ────────────────────────────────────────────────────────────

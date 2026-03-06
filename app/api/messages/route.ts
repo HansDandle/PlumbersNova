@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
 
   const messages = await prisma.message.findMany({
     where: {
+      companyId: session.companyId,
       ...(customerId ? { customerId } : {}),
       ...(leadId ? { leadId } : {}),
     },
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     const message = await prisma.message.create({
       data: {
+        companyId: session.companyId,
         content: body.content,
         direction: 'OUTBOUND',
         channel: body.channel ?? 'SMS',

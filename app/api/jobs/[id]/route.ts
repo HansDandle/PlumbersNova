@@ -29,8 +29,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const job = await prisma.job.findUnique({
-    where: { id: params.id },
+  const job = await prisma.job.findFirst({
+    where: { id: params.id, companyId: session.companyId },
     include: JOB_INCLUDE,
   })
 
@@ -51,6 +51,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body: UpdateJobBody = await req.json()
+
+    const existing = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const job = await prisma.job.update({
       where: { id: params.id },

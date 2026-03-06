@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     session.role === 'TECHNICIAN' ? session.id : (technicianId ?? undefined)
 
   const where: any = {
+    companyId: session.companyId,
     ...(status ? { status } : {}),
     ...(effectiveTechnicianId ? { technicianId: effectiveTechnicianId } : {}),
     ...(date
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     const job = await prisma.job.create({
       data: {
+        companyId: session.companyId,
         customerId: body.customerId,
         address: body.address,
         problemDescription: body.problemDescription,

@@ -12,6 +12,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const job = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+  if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const notes = await prisma.jobNote.findMany({
     where: { jobId: params.id },
     include: { author: { select: { id: true, name: true } } },
@@ -28,6 +31,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   try {
     const body: AddJobNoteBody = await req.json()
+
+    const job = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const note = await prisma.jobNote.create({
       data: {

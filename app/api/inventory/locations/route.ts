@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get('type')
 
   const locations = await prisma.inventoryLocation.findMany({
-    where: type ? { type: type as any } : {},
+    where: type ? { type: type as any, companyId: session.companyId } : { companyId: session.companyId },
     include: { technician: { select: { id: true, name: true } } },
     orderBy: { name: 'asc' },
   })
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body: { name: string; type: 'WAREHOUSE' | 'TRUCK' | 'SUPPLY_HOUSE'; technicianId?: string } = await req.json()
-    const location = await prisma.inventoryLocation.create({ data: body })
+    const location = await prisma.inventoryLocation.create({ data: { ...body, companyId: session.companyId } })
     return NextResponse.json({ data: location }, { status: 201 })
   } catch (err) {
     console.error(err)

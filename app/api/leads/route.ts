@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   const pageSize = parseInt(searchParams.get('pageSize') ?? '25')
 
   const where = {
+    companyId: session.companyId,
     ...(status ? { status: status as any } : {}),
     ...(source ? { source: source as any } : {}),
   }
@@ -46,8 +47,10 @@ export async function POST(req: NextRequest) {
 
     const lead = await prisma.lead.create({
       data: {
+        companyId: session.companyId,
         name: body.name,
         phone: body.phone,
+        email: body.email,
         address: body.address,
         description: body.description,
         preferredTime: body.preferredTime,

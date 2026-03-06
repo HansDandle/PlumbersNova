@@ -11,8 +11,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const item = await prisma.inventoryItem.findUnique({
-    where: { id: params.id },
+  const item = await prisma.inventoryItem.findFirst({
+    where: { id: params.id, companyId: session.companyId },
     include: {
       balances: {
         include: { location: true },
@@ -32,6 +32,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body: { name?: string; sku?: string; category?: string; cost?: number; defaultPrice?: number } = await req.json()
+
+    const existing = await prisma.inventoryItem.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const item = await prisma.inventoryItem.update({ where: { id: params.id }, data: body })
     return NextResponse.json({ data: item })
   } catch (err) {
@@ -44,6 +48,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const existing = await prisma.inventoryItem.findFirst({ where: { id: params.id, companyId: session.companyId } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await prisma.inventoryItem.delete({ where: { id: params.id } })
   return NextResponse.json({ data: { ok: true } })

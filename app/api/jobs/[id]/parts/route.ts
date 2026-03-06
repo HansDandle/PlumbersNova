@@ -12,6 +12,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const job = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+  if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const parts = await prisma.jobPart.findMany({
     where: { jobId: params.id },
     include: { item: true, sourceLocation: true },
@@ -33,6 +36,9 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   try {
     const body: AddJobPartBody = await req.json()
+
+    const job = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const result = await prisma.$transaction(async (tx) => {
       // Create the job part line item

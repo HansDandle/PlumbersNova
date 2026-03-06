@@ -17,7 +17,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const lead = await prisma.lead.findUnique({ where: { id: params.id } })
+  const lead = await prisma.lead.findFirst({ where: { id: params.id, companyId: session.companyId } })
   if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
   if (lead.status === 'CONVERTED') {
     return NextResponse.json({ error: 'Lead already converted' }, { status: 409 })
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       if (!customer) {
         customer = await tx.customer.create({
           data: {
+            companyId: session.companyId,
             name: lead.name,
             phone: lead.phone,
             address: body.address ?? lead.address,
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
       const job = await tx.job.create({
         data: {
+          companyId: session.companyId,
           leadId: lead.id,
           customerId: customer.id,
           address: body.address ?? lead.address ?? customer.address ?? '',

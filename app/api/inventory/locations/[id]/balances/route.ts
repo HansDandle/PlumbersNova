@@ -12,6 +12,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const location = await prisma.inventoryLocation.findFirst({ where: { id: params.id, companyId: session.companyId } })
+  if (!location) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const balances = await prisma.inventoryBalance.findMany({
     where: { locationId: params.id },
     include: { item: true },
@@ -33,6 +36,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body: AdjustBalanceBody = await req.json()
+
+    const location = await prisma.inventoryLocation.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!location) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const balance = await prisma.inventoryBalance.upsert({
       where: {

@@ -21,17 +21,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing From field' }, { status: 400 })
     }
 
+    const companyId = req.nextUrl.searchParams.get('companyId')
+    if (!companyId) {
+      return NextResponse.json({ error: 'Missing companyId' }, { status: 400 })
+    }
+
     const AUTO_REPLY = "Sorry we missed your call. What plumbing issue can we help with?"
 
     // Find existing customer
     const normalizedPhone = from.replace(/\D/g, '')
     const customer = await prisma.customer.findFirst({
-      where: { phone: { endsWith: normalizedPhone.slice(-10) } },
+      where: { companyId, phone: { endsWith: normalizedPhone.slice(-10) } },
     })
 
     // Log the outbound auto-reply message
     await prisma.message.create({
       data: {
+        companyId,
         direction: 'OUTBOUND',
         channel: 'SMS',
         content: AUTO_REPLY,

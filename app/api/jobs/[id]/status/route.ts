@@ -21,6 +21,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const body: UpdateJobStatusBody = await req.json()
 
+    const existing = await prisma.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const job = await prisma.job.update({
       where: { id: params.id },
       data: { status: body.status },

@@ -16,13 +16,14 @@ export async function GET(req: NextRequest) {
 
   const where = q
     ? {
+        companyId: session.companyId,
         OR: [
           { name: { contains: q, mode: 'insensitive' as const } },
           { phone: { contains: q } },
           { email: { contains: q, mode: 'insensitive' as const } },
         ],
       }
-    : {}
+    : { companyId: session.companyId }
 
   const [customers, total] = await Promise.all([
     prisma.customer.findMany({
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: { name: string; phone: string; address?: string; email?: string } = await req.json()
 
-    const customer = await prisma.customer.create({ data: body })
+    const customer = await prisma.customer.create({ data: { ...body, companyId: session.companyId } })
     return NextResponse.json({ data: customer }, { status: 201 })
   } catch (err) {
     console.error(err)

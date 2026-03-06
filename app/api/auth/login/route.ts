@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      companyId: user.companyId,
     })
 
     const response = NextResponse.json({

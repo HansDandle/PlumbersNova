@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const role = searchParams.get('role')
 
   const users = await prisma.user.findMany({
-    where: role ? { role: role as any } : {},
+    where: role ? { role: role as any, companyId: session.companyId } : { companyId: session.companyId },
     select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
     orderBy: { name: 'asc' },
   })
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const hashed = await bcrypt.hash(body.password, 12)
 
     const user = await prisma.user.create({
-      data: { ...body, password: hashed },
+      data: { ...body, password: hashed, companyId: session.companyId },
       select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
     })
 

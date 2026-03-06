@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const pageSize = parseInt(searchParams.get('pageSize') ?? '25')
 
-  const where = status ? { status: status as any } : {}
+  const where = status ? { status: status as any, companyId: session.companyId } : { companyId: session.companyId }
 
   const [invoices, total] = await Promise.all([
     prisma.invoice.findMany({
@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
   try {
     const body: CreateInvoiceBody = await req.json()
 
-    const job = await prisma.job.findUnique({
-      where: { id: body.jobId },
+    const job = await prisma.job.findFirst({
+      where: { id: body.jobId, companyId: session.companyId },
       include: { parts: { include: { item: true } }, laborEntries: true, invoice: true },
     })
 
@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
     const invoice = await prisma.$transaction(async (tx) => {
       const inv = await tx.invoice.create({
         data: {
+          companyId: session.companyId,
           jobId: body.jobId,
           serviceCallAmount,
           total,

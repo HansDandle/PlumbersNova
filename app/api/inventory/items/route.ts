@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   const pageSize = parseInt(searchParams.get('pageSize') ?? '50')
 
   const where: any = {
+    companyId: session.companyId,
     ...(category ? { category } : {}),
     ...(q
       ? {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body: CreateInventoryItemBody = await req.json()
-    const item = await prisma.inventoryItem.create({ data: body })
+    const item = await prisma.inventoryItem.create({ data: { ...body, companyId: session.companyId } })
     return NextResponse.json({ data: item }, { status: 201 })
   } catch (err) {
     console.error(err)

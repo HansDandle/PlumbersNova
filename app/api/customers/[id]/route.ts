@@ -11,8 +11,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const customer = await prisma.customer.findUnique({
-    where: { id: params.id },
+  const customer = await prisma.customer.findFirst({
+    where: { id: params.id, companyId: session.companyId },
     include: {
       jobs: {
         include: { invoice: { select: { id: true, status: true, total: true } } },
@@ -34,6 +34,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body: { name?: string; phone?: string; address?: string; email?: string } = await req.json()
+
+    const existing = await prisma.customer.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const customer = await prisma.customer.update({ where: { id: params.id }, data: body })
     return NextResponse.json({ data: customer })
   } catch (err) {

@@ -18,6 +18,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      const job = await tx.job.findFirst({ where: { id: params.id, companyId: session.companyId } })
+      if (!job) return
+
       const part = await tx.jobPart.findUnique({ where: { id: params.partId } })
       if (!part) return
 

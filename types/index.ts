@@ -93,6 +93,7 @@ export type InventoryBalanceWithItem = {
 export interface CreateLeadBody {
   name: string
   phone: string
+  email?: string
   address?: string
   description: string
   preferredTime?: string
@@ -103,6 +104,7 @@ export interface CreateLeadBody {
 export interface UpdateLeadBody {
   name?: string
   phone?: string
+  email?: string
   address?: string
   description?: string
   preferredTime?: string

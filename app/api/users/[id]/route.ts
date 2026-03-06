@@ -19,8 +19,8 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: params.id },
+  const user = await prisma.user.findFirst({
+    where: { id: params.id, companyId: session.companyId },
     select: SAFE_SELECT,
   })
 
@@ -39,6 +39,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   try {
     const body: { name?: string; phone?: string; password?: string; role?: string } = await req.json()
+
+    const existing = await prisma.user.findFirst({ where: { id: params.id, companyId: session.companyId } })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const data: any = { ...body }
     if (body.password) {
@@ -67,6 +70,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getSessionFromRequest(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.role !== 'OWNER') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const existing = await prisma.user.findFirst({ where: { id: params.id, companyId: session.companyId } })
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await prisma.user.delete({ where: { id: params.id } })
   return NextResponse.json({ data: { ok: true } })
