@@ -69,5 +69,19 @@ export async function POST(
     include: { priceBookTask: { select: { category: true } } },
   })
 
-  return NextResponse.json(task, { status: 201 })
+  // If this task came from the price book, return its linked materials so
+  // the client can prompt the tech about where the parts came from.
+  const materials = priceBookTaskId
+    ? await prisma.priceBookTaskMaterial.findMany({
+        where: { priceBookTaskId },
+        include: {
+          item: {
+            select: { id: true, name: true, sku: true, cost: true, defaultPrice: true, category: true },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+    : []
+
+  return NextResponse.json({ task, materials }, { status: 201 })
 }

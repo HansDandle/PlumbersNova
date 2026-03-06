@@ -268,6 +268,7 @@ model InventoryItem {
 
   balances InventoryBalance[]
   jobParts JobPart[]
+  priceBookMaterials PriceBookTaskMaterial[]
 
   @@unique([companyId, sku])
   @@map("inventory_items")
@@ -431,6 +432,7 @@ model PriceBookTask {
   updatedAt DateTime @updatedAt
 
   jobTasks JobTask[]
+  materials PriceBookTaskMaterial[]
 
   @@map("price_book_tasks")
 }
@@ -451,4 +453,19 @@ model JobTask {
   createdAt DateTime @default(now())
 
   @@map("job_tasks")
+}
+
+model PriceBookTaskMaterial {
+  id              String        @id @default(cuid())
+  priceBookTask   PriceBookTask @relation(fields: [priceBookTaskId], references: [id], onDelete: Cascade)
+  priceBookTaskId String
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId          String
+
+  defaultQuantity Float @default(1)
+
+  createdAt DateTime @default(now())
+
+  @@unique([priceBookTaskId, itemId])
+  @@map("price_book_task_materials")
 }

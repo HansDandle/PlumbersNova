@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 
 type Task = {
   id: string
@@ -9,6 +9,20 @@ type Task = {
   description: string | null
   unitPrice: number
   isActive: boolean
+}
+
+type TaskMaterial = {
+  id: string
+  defaultQuantity: number
+  item: { id: string; name: string; sku: string; cost: number }
+}
+
+type InventoryItem = {
+  id: string
+  name: string
+  sku: string
+  cost: number
+  unit: string | null
 }
 
 type Props = {
@@ -113,6 +127,89 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
     setNewPrice('')
     setShowAdd(false)
     setAdding(false)
+  }
+
+  // ── Materials management ───────────────────────────────────────────────────
+
+  const [expandedMaterials, setExpandedMaterials] = useState<Set<string>>(new Set())
+  const [taskMaterials, setTaskMaterials] = useState<Record<string, TaskMaterial[]>>({})
+  const [loadingMatFor, setLoadingMatFor] = useState<Set<string>>(new Set())
+
+  // Link-item form
+  const [linkTaskId, setLinkTaskId] = useState<string | null>(null)
+  const [linkSearch, setLinkSearch] = useState('')
+  const [linkItems, setLinkItems] = useState<InventoryItem[]>([])
+  const [linkSelectedId, setLinkSelectedId] = useState<string | null>(null)
+  const [linkQty, setLinkQty] = useState('1')
+  const [linkSaving, setLinkSaving] = useState(false)
+
+  const loadMaterials = useCallback(async (taskId: string) => {
+    setLoadingMatFor((s) => new Set(s).add(taskId))
+    const res = await fetch(`/api/pricebook/${taskId}/materials`)
+    const mats: TaskMaterial[] = await res.json()
+    setTaskMaterials((prev) => ({ ...prev, [taskId]: mats }))
+    setLoadingMatFor((s) => { const n = new Set(s); n.delete(taskId); return n })
+  }, [])
+
+  function toggleMaterials(taskId: string) {
+    const next = new Set(expandedMaterials)
+    if (next.has(taskId)) {
+      next.delete(taskId)
+    } else {
+      next.add(taskId)
+      if (!taskMaterials[taskId]) loadMaterials(taskId)
+    }
+    setExpandedMaterials(next)
+  }
+
+  async function searchLinkItems(q: string) {
+    setLinkSearch(q)
+    setLinkSelectedId(null)
+    if (!q) { setLinkItems([]); return }
+    const res = await fetch(`/api/inventory?search=${encodeURIComponent(q)}&limit=10`)
+    const data = await res.json()
+    setLinkItems(Array.isArray(data) ? data : data.items ?? [])
+  }
+
+  async function saveMaterialLink(taskId: string) {
+    if (!linkSelectedId) return
+    setLinkSaving(true)
+    const res = await fetch(`/api/pricebook/${taskId}/materials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId: linkSelectedId, defaultQuantity: Number(linkQty) || 1 }),
+    })
+    if (res.ok) {
+      await loadMaterials(taskId)
+      setLinkTaskId(null)
+      setLinkSearch('')
+      setLinkItems([])
+      setLinkSelectedId(null)
+      setLinkQty('1')
+    }
+    setLinkSaving(false)
+  }
+
+  async function deleteMaterial(materialId: string, taskId: string) {
+    await fetch(`/api/pricebook/materials/${materialId}`, { method: 'DELETE' })
+    setTaskMaterials((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] ?? []).filter((m) => m.id !== materialId),
+    }))
+  }
+
+  async function updateMaterialQty(materialId: string, taskId: string, qty: number) {
+    await fetch(`/api/pricebook/materials/${materialId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ defaultQuantity: qty }),
+    })
+    setTaskMaterials((prev) => ({
+      ...prev,
+      [taskId]: (prev[taskId] ?? []).map((m) =>
+        m.id === materialId ? { ...m, defaultQuantity: qty } : m
+      ),
+    }))
   }
 
   return (
@@ -304,6 +401,7 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
                   }
 
                   return (
+                    <>
                     <tr key={task.id} className={`hover:bg-gray-50/60 transition-colors ${!task.isActive ? 'opacity-50' : ''}`}>
                       <td className="px-4 py-3 flex-1">
                         <div className="font-medium text-gray-900 leading-snug">{task.name}</div>
@@ -317,6 +415,19 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
                       </td>
                       {canEdit && (
                         <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            onClick={() => toggleMaterials(task.id)}
+                            className={`text-xs transition-colors mr-3 ${
+                              expandedMaterials.has(task.id)
+                                ? 'text-blue-600 font-medium'
+                                : 'text-gray-400 hover:text-blue-600'
+                            }`}
+                          >
+                            🔩 Materials
+                            {taskMaterials[task.id]?.length
+                              ? ` (${taskMaterials[task.id].length})`
+                              : ''}
+                          </button>
                           <button
                             onClick={() => startEdit(task)}
                             className="text-xs text-gray-400 hover:text-blue-600 transition-colors mr-3"
@@ -336,6 +447,136 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
                         </td>
                       )}
                     </tr>
+
+                    {/* Materials panel */}
+                    {expandedMaterials.has(task.id) && (
+                      <tr key={`${task.id}-mats`}>
+                        <td colSpan={3} className="px-4 pb-4 pt-0 bg-blue-50/30">
+                          <div className="border border-blue-100 rounded-xl p-3 space-y-2">
+                            <div className="text-xs font-semibold text-gray-600 mb-1">
+                              Default Materials — added automatically when this task is used on a job
+                            </div>
+
+                            {loadingMatFor.has(task.id) && (
+                              <p className="text-xs text-gray-400">Loading…</p>
+                            )}
+
+                            {(taskMaterials[task.id] ?? []).length === 0 && !loadingMatFor.has(task.id) && (
+                              <p className="text-xs text-gray-400 italic">No materials linked yet</p>
+                            )}
+
+                            {(taskMaterials[task.id] ?? []).map((m) => (
+                              <div
+                                key={m.id}
+                                className="flex items-center gap-3 bg-white rounded-lg px-3 py-2 border border-gray-100"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium text-gray-800">{m.item.name}</span>
+                                  <span className="text-xs text-gray-400 ml-2">SKU: {m.item.sku}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <label className="text-xs text-gray-500">Qty:</label>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    defaultValue={m.defaultQuantity}
+                                    onBlur={(e) => {
+                                      const v = Number(e.target.value)
+                                      if (v > 0 && v !== m.defaultQuantity)
+                                        updateMaterialQty(m.id, task.id, v)
+                                    }}
+                                    className="w-16 px-2 py-1 border border-gray-200 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => deleteMaterial(m.id, task.id)}
+                                  className="text-gray-300 hover:text-red-500 transition-colors text-sm"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* Link item form */}
+                            {linkTaskId === task.id ? (
+                              <div className="bg-white border border-blue-200 rounded-lg p-3 space-y-2">
+                                <p className="text-xs font-medium text-gray-700">Search inventory items to link</p>
+                                <input
+                                  type="search"
+                                  placeholder="Type item name or SKU…"
+                                  value={linkSearch}
+                                  onChange={(e) => searchLinkItems(e.target.value)}
+                                  autoFocus
+                                  className="w-full px-3 py-1.5 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                />
+                                {linkItems.length > 0 && (
+                                  <div className="border border-gray-200 rounded divide-y divide-gray-100 max-h-36 overflow-y-auto">
+                                    {linkItems.map((item) => (
+                                      <button
+                                        key={item.id}
+                                        onClick={() => {
+                                          setLinkSelectedId(item.id)
+                                          setLinkSearch(item.name)
+                                          setLinkItems([])
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-blue-50 transition-colors ${
+                                          linkSelectedId === item.id ? 'bg-blue-50 font-medium' : ''
+                                        }`}
+                                      >
+                                        <span className="font-medium">{item.name}</span>
+                                        <span className="text-gray-400 ml-2">
+                                          {item.sku} · ${item.cost.toFixed(2)}
+                                          {item.unit ? ` / ${item.unit}` : ''}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-500 whitespace-nowrap">Default qty:</label>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={linkQty}
+                                    onChange={(e) => setLinkQty(e.target.value)}
+                                    className="w-20 px-2 py-1.5 border border-gray-200 rounded text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                  />
+                                  <button
+                                    onClick={() => saveMaterialLink(task.id)}
+                                    disabled={!linkSelectedId || linkSaving}
+                                    className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors ml-auto"
+                                  >
+                                    {linkSaving ? 'Linking…' : 'Link Item'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setLinkTaskId(null); setLinkSearch(''); setLinkItems([]) }}
+                                    className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded text-xs hover:bg-gray-50 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setLinkTaskId(task.id)
+                                  setLinkSearch('')
+                                  setLinkSelectedId(null)
+                                  setLinkQty('1')
+                                  setLinkItems([])
+                                }}
+                                className="text-xs text-blue-600 hover:underline mt-1"
+                              >
+                                + Link inventory item
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   )
                 })}
               </tbody>
