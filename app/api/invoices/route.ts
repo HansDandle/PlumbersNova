@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     const job = await prisma.job.findUnique({
       where: { id: body.jobId },
-      include: { parts: { include: { item: true } }, laborEntries: true },
+      include: { parts: { include: { item: true } }, laborEntries: true, invoice: true },
     })
 
     if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })

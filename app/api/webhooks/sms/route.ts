@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import {
   type SmsIntakeState,
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
       const { nextState, twimlReply } = await processIntakeReply(currentState, body)
 
       // Persist updated state + collected data back onto the lead
-      const leadUpdate: Record<string, unknown> = { smsIntakeState: nextState }
+      const leadUpdate: Record<string, unknown> = { smsIntakeState: nextState as unknown as Prisma.InputJsonValue }
       if (nextState.collected.address)  leadUpdate.address      = nextState.collected.address
       if (nextState.collected.issue)    leadUpdate.description  = nextState.collected.issue
       if (nextState.collected.preferredTime) leadUpdate.preferredTime = nextState.collected.preferredTime
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
         description: body,           // raw first message as initial description
         source: 'SMS',
         customerId: customer?.id,
-        smsIntakeState: initialState,
+        smsIntakeState: initialState as unknown as Prisma.InputJsonValue,
         messages: { connect: { id: message.id } },
       },
     })
