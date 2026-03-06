@@ -22,7 +22,6 @@ type InventoryItem = {
   name: string
   sku: string
   cost: number
-  unit: string | null
 }
 
 type Props = {
@@ -166,9 +165,9 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
     setLinkSearch(q)
     setLinkSelectedId(null)
     if (!q) { setLinkItems([]); return }
-    const res = await fetch(`/api/inventory?search=${encodeURIComponent(q)}&limit=10`)
+    const res = await fetch(`/api/inventory/items?q=${encodeURIComponent(q)}&pageSize=10`)
     const data = await res.json()
-    setLinkItems(Array.isArray(data) ? data : data.items ?? [])
+    setLinkItems(Array.isArray(data) ? data : data.data ?? [])
   }
 
   async function saveMaterialLink(taskId: string) {
@@ -527,7 +526,6 @@ export function PriceBookManager({ initialTasks, categories, canEdit }: Props) {
                                         <span className="font-medium">{item.name}</span>
                                         <span className="text-gray-400 ml-2">
                                           {item.sku} · ${item.cost.toFixed(2)}
-                                          {item.unit ? ` / ${item.unit}` : ''}
                                         </span>
                                       </button>
                                     ))}
