@@ -23,11 +23,15 @@ export function AssignTechnicianModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [technicianId, setTechnicianId] = useState(currentTechnicianId ?? '')
-  const [scheduledTime, setScheduledTime] = useState(
-    currentScheduledTime
-      ? new Date(currentScheduledTime).toISOString().slice(0, 16)
-      : ''
-  )
+  // Default scheduled time: existing value, or today at the next round hour
+  function defaultTime() {
+    if (currentScheduledTime) return new Date(currentScheduledTime).toISOString().slice(0, 16)
+    const d = new Date()
+    d.setMinutes(0, 0, 0)
+    d.setHours(d.getHours() + 1)
+    return d.toISOString().slice(0, 16)
+  }
+  const [scheduledTime, setScheduledTime] = useState(defaultTime)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

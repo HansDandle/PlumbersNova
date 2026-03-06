@@ -35,11 +35,11 @@ export default async function DispatchPage({
       where: {
         companyId: session?.companyId,
         OR: [{ scheduledTime: null }, { technicianId: null }],
-        status: { in: ['JOB_REQUESTED', 'SCHEDULED'] },
+        status: { notIn: ['COMPLETED', 'INVOICED', 'PAID'] },
       },
-      include: { customer: true },
+      include: { customer: true, technician: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'asc' },
-      take: 30,
+      take: 50,
     }),
   ])
 

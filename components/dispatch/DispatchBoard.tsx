@@ -31,10 +31,13 @@ export function DispatchBoard({
   const [draggingJob, setDraggingJob] = useState<string | null>(null)
 
   async function assignTechnician(jobId: string, technicianId: string) {
+    // Set the scheduled time to noon on the currently-viewed date so the job
+    // appears in the scheduled lane immediately after dropping
+    const scheduledTime = new Date(`${date}T12:00:00`).toISOString()
     await fetch(`/api/jobs/${jobId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ technicianId }),
+      body: JSON.stringify({ technicianId, scheduledTime }),
     })
     await fetch(`/api/jobs/${jobId}/status`, {
       method: 'PATCH',
@@ -102,6 +105,9 @@ export function DispatchBoard({
                     <p className="text-sm font-medium text-gray-900">{job.customer.name}</p>
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{job.address}</p>
                     <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{job.problemDescription}</p>
+                    {job.technician && (
+                      <p className="text-xs text-blue-500 mt-0.5">→ {job.technician.name} (no time set)</p>
+                    )}
                   </Link>
                 </li>
               ))
