@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -7,8 +8,9 @@ import { ConvertLeadButton } from '@/components/leads/ConvertLeadButton'
 type Params = { params: { id: string } }
 
 export default async function LeadDetailPage({ params }: Params) {
-  const lead = await prisma.lead.findUnique({
-    where: { id: params.id },
+  const session = await getSession()
+  const lead = await prisma.lead.findFirst({
+    where: { id: params.id, companyId: session?.companyId },
     include: {
       customer: true,
       job: { include: { technician: { select: { id: true, name: true } } } },

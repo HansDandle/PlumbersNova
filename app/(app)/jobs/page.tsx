@@ -13,6 +13,7 @@ export default async function JobsPage({
   const pageSize = 25
 
   const where: any = {
+    companyId: session?.companyId,
     ...(searchParams.status ? { status: searchParams.status } : {}),
     // Technicians only see their own jobs
     ...(session?.role === 'TECHNICIAN' ? { technicianId: session.id } : {}),

@@ -5,12 +5,14 @@ import Link from 'next/link'
 export default async function DashboardPage() {
   const session = await getSession()
 
+  const cid = session?.companyId
+
   const [openJobs, newLeads, unpaidInvoices] = await Promise.all([
     prisma.job.count({
-      where: { status: { in: ['JOB_REQUESTED', 'SCHEDULED', 'TECHNICIAN_ASSIGNED', 'EN_ROUTE', 'IN_PROGRESS'] } },
+      where: { companyId: cid, status: { in: ['JOB_REQUESTED', 'SCHEDULED', 'TECHNICIAN_ASSIGNED', 'EN_ROUTE', 'IN_PROGRESS'] } },
     }),
-    prisma.lead.count({ where: { status: 'NEW' } }),
-    prisma.invoice.count({ where: { status: { in: ['UNSENT', 'SENT'] } } }),
+    prisma.lead.count({ where: { companyId: cid, status: 'NEW' } }),
+    prisma.invoice.count({ where: { companyId: cid, status: { in: ['UNSENT', 'SENT'] } } }),
   ])
 
   // Today's jobs for the calendar summary
@@ -21,6 +23,7 @@ export default async function DashboardPage() {
 
   const todaysJobs = await prisma.job.findMany({
     where: {
+      companyId: cid,
       scheduledTime: { gte: today, lt: tomorrow },
     },
     include: {

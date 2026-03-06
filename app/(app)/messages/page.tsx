@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import Link from 'next/link'
 
 export default async function MessagesPage({
@@ -6,9 +7,11 @@ export default async function MessagesPage({
 }: {
   searchParams: { customerId?: string; leadId?: string }
 }) {
+  const session = await getSession()
   // Load recent conversations — group by customer
   const recentMessages = await prisma.message.findMany({
     where: {
+      companyId: session?.companyId,
       ...(searchParams.customerId ? { customerId: searchParams.customerId } : {}),
       ...(searchParams.leadId ? { leadId: searchParams.leadId } : {}),
     },
@@ -31,12 +34,12 @@ export default async function MessagesPage({
 
   const activeThread = searchParams.customerId
     ? await prisma.message.findMany({
-        where: { customerId: searchParams.customerId },
+        where: { companyId: session?.companyId, customerId: searchParams.customerId },
         orderBy: { createdAt: 'asc' },
       })
     : searchParams.leadId
     ? await prisma.message.findMany({
-        where: { leadId: searchParams.leadId },
+        where: { companyId: session?.companyId, leadId: searchParams.leadId },
         orderBy: { createdAt: 'asc' },
       })
     : []

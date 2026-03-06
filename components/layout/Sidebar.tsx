@@ -65,7 +65,7 @@ export function Sidebar({ role }: { role: Role }) {
 
 function LogoutButton() {
   async function handleLogout() {
-    await fetch('/api/auth/me', { method: 'POST' })
+    await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/login'
   }
 

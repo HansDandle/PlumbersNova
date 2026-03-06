@@ -7,6 +7,7 @@ import Link from 'next/link'
 export default function NewLeadPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -24,6 +25,7 @@ export default function NewLeadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError('')
 
     try {
       const res = await fetch('/api/leads', {
@@ -35,7 +37,12 @@ export default function NewLeadPage() {
       if (res.ok) {
         const { data } = await res.json()
         router.push(`/leads/${data.id}`)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        setError(json.error ?? `Error ${res.status} — please try again`)
       }
+    } catch {
+      setError('Network error — please try again')
     } finally {
       setLoading(false)
     }
@@ -49,6 +56,9 @@ export default function NewLeadPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>

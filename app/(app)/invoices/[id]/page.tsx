@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -8,8 +9,9 @@ import { SendInvoiceButton } from '@/components/invoices/SendInvoiceButton'
 type Params = { params: { id: string } }
 
 export default async function InvoiceDetailPage({ params }: Params) {
-  const invoice = await prisma.invoice.findUnique({
-    where: { id: params.id },
+  const session = await getSession()
+  const invoice = await prisma.invoice.findFirst({
+    where: { id: params.id, companyId: session?.companyId },
     include: {
       lineItems: true,
       job: { include: { customer: true, technician: { select: { id: true, name: true } } } },

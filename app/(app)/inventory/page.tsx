@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import Link from 'next/link'
 import AdjustBalanceModal from '@/components/inventory/AdjustBalanceModal'
 
@@ -7,12 +8,15 @@ export default async function InventoryPage({
 }: {
   searchParams: { location?: string }
 }) {
+  const session = await getSession()
   const [locations, items] = await Promise.all([
     prisma.inventoryLocation.findMany({
+      where: { companyId: session?.companyId },
       include: { technician: { select: { id: true, name: true } } },
       orderBy: { name: 'asc' },
     }),
     prisma.inventoryItem.findMany({
+      where: { companyId: session?.companyId },
       orderBy: { name: 'asc' },
     }),
   ])

@@ -14,8 +14,8 @@ type Params = { params: { id: string } }
 export default async function JobDetailPage({ params }: Params) {
   const session = await getSession()
 
-  const job = await prisma.job.findUnique({
-    where: { id: params.id },
+  const job = await prisma.job.findFirst({
+    where: { id: params.id, companyId: session?.companyId },
     include: {
       customer: true,
       technician: { select: { id: true, name: true, phone: true } },

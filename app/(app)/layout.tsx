@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation'
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession()
   if (!session) redirect('/login')
+  // If session exists but has no companyId (stale pre-multitenant cookie), force re-login
+  if (!session.companyId) redirect('/api/auth/logout-redirect')
 
   return (
     <div className="flex h-screen bg-gray-50">

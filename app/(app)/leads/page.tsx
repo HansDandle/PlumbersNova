@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 
@@ -7,10 +8,14 @@ export default async function LeadsPage({
 }: {
   searchParams: { status?: string; page?: string }
 }) {
+  const session = await getSession()
   const page = parseInt(searchParams.page ?? '1')
   const pageSize = 25
 
-  const where = searchParams.status ? { status: searchParams.status as any } : {}
+  const where: any = {
+    companyId: session?.companyId,
+    ...(searchParams.status ? { status: searchParams.status } : {}),
+  }
 
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
@@ -20,7 +25,7 @@ export default async function LeadsPage({
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.lead.count({ where }),
+    prisma.lead.count({ where: { companyId: session?.companyId, ...(searchParams.status ? { status: searchParams.status as any } : {}) } }),
   ])
 
   const statuses = ['NEW', 'CONTACTED', 'CONVERTED', 'CLOSED']

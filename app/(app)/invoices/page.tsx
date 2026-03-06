@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
 import Link from 'next/link'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 
@@ -7,9 +8,13 @@ export default async function InvoicesPage({
 }: {
   searchParams: { status?: string; page?: string }
 }) {
+  const session = await getSession()
   const page = parseInt(searchParams.page ?? '1')
   const pageSize = 25
-  const where = searchParams.status ? { status: searchParams.status as any } : {}
+  const where: any = {
+    companyId: session?.companyId,
+    ...(searchParams.status ? { status: searchParams.status } : {}),
+  }
 
   const [invoices, total] = await Promise.all([
     prisma.invoice.findMany({
@@ -19,7 +24,7 @@ export default async function InvoicesPage({
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    prisma.invoice.count({ where }),
+    prisma.invoice.count({ where }),  // reuses the scoped where above
   ])
 
   return (
