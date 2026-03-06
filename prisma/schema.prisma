@@ -1,0 +1,365 @@
+// Plumbing Operations Platform — Prisma Schema
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  DISPATCHER
+  TECHNICIAN
+}
+
+enum LeadSource {
+  PHONE
+  SMS
+  MANUAL
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+enum JobStatus {
+  JOB_REQUESTED
+  SCHEDULED
+  TECHNICIAN_ASSIGNED
+  EN_ROUTE
+  IN_PROGRESS
+  COMPLETED
+  INVOICED
+  PAID
+}
+
+enum LocationType {
+  WAREHOUSE
+  TRUCK
+  SUPPLY_HOUSE
+}
+
+enum InvoiceStatus {
+  UNSENT
+  SENT
+  PAID
+}
+
+enum LineItemType {
+  SERVICE_CALL
+  LABOR
+  PART
+}
+
+enum MessageDir {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageChannel {
+  SMS
+  EMAIL
+}
+
+enum NotificationType {
+  NEW_LEAD
+  JOB_ASSIGNED
+  INVENTORY_LOW
+  JOB_COMPLETED
+  PAYMENT_RECEIVED
+}
+
+// ─────────────────────────────────────────────
+// Users
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  role      Role     @default(TECHNICIAN)
+  password  String   // bcrypt hashed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedJobs       Job[]
+  inventoryLocations InventoryLocation[]
+  jobNotes           JobNote[]
+  notifications      Notification[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Customers
+// ─────────────────────────────────────────────
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  address   String?
+  email     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads    Lead[]
+  jobs     Job[]
+  messages Message[]
+
+  @@map("customers")
+}
+
+// ─────────────────────────────────────────────
+// Leads
+// ─────────────────────────────────────────────
+
+model Lead {
+  id            String     @id @default(cuid())
+  customer      Customer?  @relation(fields: [customerId], references: [id])
+  customerId    String?
+
+  name          String
+  phone         String
+  address       String?
+  description   String
+  preferredTime String?
+
+  source        LeadSource @default(MANUAL)
+  status        LeadStatus @default(NEW)
+
+  /// JSON blob tracking the AI SMS intake conversation state.
+  /// Shape: { step: SmsIntakeStep, collected: { issue, address, preferredTime } }
+  smsIntakeState Json?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  job      Job?
+  messages Message[]
+
+  @@map("leads")
+}
+
+// ─────────────────────────────────────────────
+// Jobs
+// ─────────────────────────────────────────────
+
+model Job {
+  id                 String    @id @default(cuid())
+  lead               Lead?     @relation(fields: [leadId], references: [id])
+  leadId             String?   @unique
+  customer           Customer  @relation(fields: [customerId], references: [id])
+  customerId         String
+
+  address            String
+  problemDescription String
+
+  technician         User?     @relation(fields: [technicianId], references: [id])
+  technicianId       String?
+
+  scheduledTime      DateTime?
+  scheduledEndTime   DateTime?
+  status             JobStatus @default(JOB_REQUESTED)
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  notes        JobNote[]
+  photos       JobPhoto[]
+  parts        JobPart[]
+  laborEntries LaborEntry[]
+  invoice      Invoice?
+
+  @@map("jobs")
+}
+
+model JobNote {
+  id        String   @id @default(cuid())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId     String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("job_notes")
+}
+
+model JobPhoto {
+  id        String   @id @default(cuid())
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId     String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  @@map("job_photos")
+}
+
+// ─────────────────────────────────────────────
+// Inventory
+// ─────────────────────────────────────────────
+
+model InventoryItem {
+  id           String   @id @default(cuid())
+  sku          String   @unique
+  name         String
+  category     String?
+  cost         Float
+  defaultPrice Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  balances InventoryBalance[]
+  jobParts JobPart[]
+
+  @@map("inventory_items")
+}
+
+model InventoryLocation {
+  id           String       @id @default(cuid())
+  name         String
+  type         LocationType @default(WAREHOUSE)
+  technician   User?        @relation(fields: [technicianId], references: [id])
+  technicianId String?
+
+  createdAt DateTime @default(now())
+
+  balances InventoryBalance[]
+  jobParts JobPart[]
+
+  @@map("inventory_locations")
+}
+
+model InventoryBalance {
+  id         String            @id @default(cuid())
+  location   InventoryLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  locationId String
+  item       InventoryItem     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId     String
+  quantity   Int               @default(0) // allowed to go negative
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([locationId, itemId])
+  @@map("inventory_balances")
+}
+
+// ─────────────────────────────────────────────
+// Job Parts & Labor
+// ─────────────────────────────────────────────
+
+model JobPart {
+  id               String             @id @default(cuid())
+  job              Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId            String
+  item             InventoryItem      @relation(fields: [itemId], references: [id])
+  itemId           String
+  quantity         Int
+  unitPrice        Float
+  sourceLocation   InventoryLocation? @relation(fields: [sourceLocationId], references: [id])
+  sourceLocationId String?
+
+  createdAt DateTime @default(now())
+
+  @@map("job_parts")
+}
+
+model LaborEntry {
+  id          String   @id @default(cuid())
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId       String
+  description String
+  amount      Float
+
+  createdAt DateTime @default(now())
+
+  @@map("labor_entries")
+}
+
+// ─────────────────────────────────────────────
+// Invoices
+// ─────────────────────────────────────────────
+
+model Invoice {
+  id                String        @id @default(cuid())
+  job               Job           @relation(fields: [jobId], references: [id])
+  jobId             String        @unique
+  serviceCallAmount Float         @default(0)
+  status            InvoiceStatus @default(UNSENT)
+  total             Float         @default(0)
+  externalId        String? // QuickBooks / Xero reference
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineItems InvoiceLineItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceLineItem {
+  id          String       @id @default(cuid())
+  invoice     Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   String
+  type        LineItemType
+  description String
+  quantity    Float        @default(1)
+  unitPrice   Float
+  total       Float
+
+  @@map("invoice_line_items")
+}
+
+// ─────────────────────────────────────────────
+// Messaging
+// ─────────────────────────────────────────────
+
+model Message {
+  id         String         @id @default(cuid())
+  customer   Customer?      @relation(fields: [customerId], references: [id])
+  customerId String?
+  lead       Lead?          @relation(fields: [leadId], references: [id])
+  leadId     String?
+  direction  MessageDir
+  channel    MessageChannel @default(SMS)
+  content    String
+
+  createdAt DateTime @default(now())
+
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────
+// Notifications
+// ─────────────────────────────────────────────
+
+model Notification {
+  id      String           @id @default(cuid())
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String
+  type    NotificationType
+  title   String
+  message String
+  read    Boolean          @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
