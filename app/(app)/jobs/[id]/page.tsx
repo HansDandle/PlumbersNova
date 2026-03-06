@@ -106,14 +106,31 @@ export default async function JobDetailPage({ params }: Params) {
 
       {/* Status flow / assign technician */}
       {canEdit && (
-        job.status === 'SCHEDULED' || (job.status === 'JOB_REQUESTED' && technicians.length > 0 && !job.technicianId)
-          ? <AssignTechnicianModal
-              jobId={job.id}
-              technicians={technicians}
-              currentTechnicianId={job.technicianId}
-              currentScheduledTime={job.scheduledTime}
-            />
-          : <JobStatusFlow jobId={job.id} currentStatus={job.status} />
+        <div className="space-y-2">
+          {/* Primary action */}
+          {job.status === 'SCHEDULED' || (job.status === 'JOB_REQUESTED' && !job.technicianId)
+            ? <AssignTechnicianModal
+                jobId={job.id}
+                technicians={technicians}
+                currentTechnicianId={job.technicianId}
+                currentScheduledTime={job.scheduledTime}
+              />
+            : <JobStatusFlow jobId={job.id} currentStatus={job.status} />
+          }
+          {/* Reassign button — available to owner/dispatcher any time job isn't finished */}
+          {technicians.length > 0 && !['INVOICED', 'PAID'].includes(job.status) &&
+            (job.status !== 'SCHEDULED' && job.status !== 'JOB_REQUESTED') && (
+            <div className="text-right pr-1">
+              <AssignTechnicianModal
+                jobId={job.id}
+                technicians={technicians}
+                currentTechnicianId={job.technicianId}
+                currentScheduledTime={job.scheduledTime}
+                reassign
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {/* Parts */}

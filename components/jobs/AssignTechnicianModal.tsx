@@ -10,11 +10,13 @@ export function AssignTechnicianModal({
   technicians,
   currentTechnicianId,
   currentScheduledTime,
+  reassign = false,
 }: {
   jobId: string
   technicians: Technician[]
   currentTechnicianId: string | null
   currentScheduledTime: Date | null
+  reassign?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -44,13 +46,15 @@ export function AssignTechnicianModal({
       })
       if (!patchRes.ok) throw new Error('Failed to update job')
 
-      // Advance status to TECHNICIAN_ASSIGNED
-      const statusRes = await fetch(`/api/jobs/${jobId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'TECHNICIAN_ASSIGNED' }),
-      })
-      if (!statusRes.ok) throw new Error('Failed to update status')
+      // Only advance status when doing initial assignment, not reassignment
+      if (!reassign) {
+        const statusRes = await fetch(`/api/jobs/${jobId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'TECHNICIAN_ASSIGNED' }),
+        })
+        if (!statusRes.ok) throw new Error('Failed to update status')
+      }
 
       setOpen(false)
       router.refresh()
@@ -65,16 +69,21 @@ export function AssignTechnicianModal({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="w-full py-3 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+        className={reassign
+          ? 'text-xs text-blue-600 hover:underline font-medium'
+          : 'w-full py-3 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'
+        }
       >
-        Assign Technician
+        {reassign ? 'Reassign' : 'Assign Technician'}
       </button>
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Assign Technician</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {reassign ? 'Reassign Technician' : 'Assign Technician'}
+              </h2>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>
 
@@ -123,7 +132,7 @@ export function AssignTechnicianModal({
                   disabled={loading}
                   className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
                 >
-                  {loading ? 'Assigning…' : 'Assign'}
+                  {loading ? 'Saving…' : reassign ? 'Reassign' : 'Assign'}
                 </button>
               </div>
             </form>
