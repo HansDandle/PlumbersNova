@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { href: '/inventory', label: 'Inventory', icon: '📦', roles: ['OWNER', 'DISPATCHER'] },
   { href: '/invoices', label: 'Invoices', icon: '💲', roles: ['OWNER', 'DISPATCHER'] },
   { href: '/messages', label: 'Messages', icon: '💬', roles: ['OWNER', 'DISPATCHER'] },
+  { href: '/reports', label: 'Reports', icon: '📊' },
   { href: '/settings', label: 'Settings', icon: '⚙️', roles: ['OWNER', 'DISPATCHER'] },
 ]
 
