@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import AddUserModal from './add-user-modal'
 
 export default async function SettingsPage() {
   const session = await getSession()
@@ -9,6 +10,7 @@ export default async function SettingsPage() {
   }
 
   const users = await prisma.user.findMany({
+    where: { companyId: session.companyId },
     select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
     orderBy: { name: 'asc' },
   })
@@ -21,11 +23,7 @@ export default async function SettingsPage() {
       <section className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-gray-900">Team Members</h2>
-          {session.role === 'OWNER' && (
-            <button className="text-sm text-blue-600 hover:underline font-medium">
-              + Add User
-            </button>
-          )}
+          {session.role === 'OWNER' && <AddUserModal />}
         </div>
 
         <ul className="divide-y divide-gray-100">
