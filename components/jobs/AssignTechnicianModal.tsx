@@ -11,12 +11,14 @@ export function AssignTechnicianModal({
   currentTechnicianId,
   currentScheduledTime,
   reassign = false,
+  triggerLabel,
 }: {
   jobId: string
   technicians: Technician[]
   currentTechnicianId: string | null
   currentScheduledTime: Date | null
   reassign?: boolean
+  triggerLabel?: string
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -78,7 +80,7 @@ export function AssignTechnicianModal({
           : 'w-full py-3 rounded-xl text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors'
         }
       >
-        {reassign ? 'Reassign' : 'Assign Technician'}
+        {triggerLabel ?? (reassign ? 'Reassign' : 'Assign Technician')}
       </button>
 
       {open && (
@@ -86,7 +88,7 @@ export function AssignTechnicianModal({
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                {reassign ? 'Reassign Technician' : 'Assign Technician'}
+                {triggerLabel === 'Edit time' ? 'Edit Schedule' : reassign ? 'Reassign Technician' : 'Assign Technician'}
               </h2>
               <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
             </div>

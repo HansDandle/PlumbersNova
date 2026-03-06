@@ -73,7 +73,18 @@ export default async function JobDetailPage({ params }: Params) {
           </div>
           <div>
             <dt className="text-gray-500">Technician</dt>
-            <dd className="font-medium mt-0.5">{job.technician?.name ?? 'Unassigned'}</dd>
+            <dd className="font-medium mt-0.5 flex items-center gap-2">
+              <span>{job.technician?.name ?? 'Unassigned'}</span>
+              {technicians.length > 0 && !['INVOICED', 'PAID'].includes(job.status) && (
+                <AssignTechnicianModal
+                  jobId={job.id}
+                  technicians={technicians}
+                  currentTechnicianId={job.technicianId}
+                  currentScheduledTime={job.scheduledTime}
+                  reassign
+                />
+              )}
+            </dd>
           </div>
           <div className="col-span-2">
             <dt className="text-gray-500">Address</dt>
@@ -92,22 +103,33 @@ export default async function JobDetailPage({ params }: Params) {
             <dt className="text-gray-500">Problem</dt>
             <dd className="font-medium mt-0.5">{job.problemDescription}</dd>
           </div>
-          {job.scheduledTime && (
-            <div className="col-span-2">
-              <dt className="text-gray-500">Scheduled</dt>
-              <dd className="font-medium mt-0.5">
-                {new Date(job.scheduledTime).toLocaleString()}
+          <div className="col-span-2">
+            <dt className="text-gray-500">Scheduled</dt>
+            <dd className="font-medium mt-0.5 flex items-center gap-2">
+              <span>
+                {job.scheduledTime
+                  ? new Date(job.scheduledTime).toLocaleString()
+                  : <span className="text-gray-400 font-normal">Not scheduled</span>}
                 {job.scheduledEndTime && ` – ${new Date(job.scheduledEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-              </dd>
-            </div>
-          )}
+              </span>
+              {technicians.length > 0 && !['INVOICED', 'PAID'].includes(job.status) && (
+                <AssignTechnicianModal
+                  jobId={job.id}
+                  technicians={technicians}
+                  currentTechnicianId={job.technicianId}
+                  currentScheduledTime={job.scheduledTime}
+                  reassign
+                  triggerLabel="Edit time"
+                />
+              )}
+            </dd>
+          </div>
         </dl>
       </div>
 
       {/* Status flow / assign technician */}
       {canEdit && (
         <div className="space-y-2">
-          {/* Primary action */}
           {job.status === 'SCHEDULED' || (job.status === 'JOB_REQUESTED' && !job.technicianId)
             ? <AssignTechnicianModal
                 jobId={job.id}
@@ -117,19 +139,6 @@ export default async function JobDetailPage({ params }: Params) {
               />
             : <JobStatusFlow jobId={job.id} currentStatus={job.status} />
           }
-          {/* Reassign button — available to owner/dispatcher any time job isn't finished */}
-          {technicians.length > 0 && !['INVOICED', 'PAID'].includes(job.status) &&
-            (job.status !== 'SCHEDULED' && job.status !== 'JOB_REQUESTED') && (
-            <div className="text-right pr-1">
-              <AssignTechnicianModal
-                jobId={job.id}
-                technicians={technicians}
-                currentTechnicianId={job.technicianId}
-                currentScheduledTime={job.scheduledTime}
-                reassign
-              />
-            </div>
-          )}
         </div>
       )}
 
